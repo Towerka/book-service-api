@@ -1,60 +1,53 @@
 package com.example.bookservice.services;
 
+import com.example.bookservice.dto.responses.UserResponse;
 import com.example.bookservice.entities.User;
+import com.example.bookservice.mappers.UserMapper;
 import com.example.bookservice.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 
-import javax.persistence.SequenceGenerator;
 import java.util.List;
-import java.util.Optional;
 
-@Service()
+@Service
 public class UserService {
 
-    private final UserRepository userRepository;
+    @Autowired
+    UserRepository userRepo;
 
     @Autowired
-    public UserService(UserRepository userRepository){
-        this.userRepository = userRepository;
+    JwtUserDetailsService jwtUserDetailsService;
+
+
+    public UserResponse getUserInfo(User user) {
+        return UserMapper.INSTANCE.toDto(user);
     }
 
-    @PostMapping
-    public boolean logined(User user, BindingResult result, Model model){
-        boolean loggined = false;
-        User user1 = userRepository.getUserByEmail(user.getEmail()).orElseThrow(()-> new IllegalStateException("user doesn't exist"));
-        System.out.print("User1 password :" + user1.getPassword() + " " + user.getPassword());
-        System.out.print(user.getPassword());
-        if(user1.getPassword().equals(user.getPassword())){
-            loggined = true;
-        }
-        System.out.println(loggined);
-        return loggined;
+    public List<UserResponse> getUsers() {
+        final int defaultLimit = 100;
+        final int defaultOffset = 0;
+
+        return this.getUsers(defaultLimit, defaultOffset);
     }
 
-    public void addUser(User user, BindingResult result, Model model){
-        userRepository.save(user);
+    public List<UserResponse> getUsers(int limit, int offset) {
+        final List<User> events = this._getUsers(limit, offset);
+
+        return UserMapper.INSTANCE.toDtos(events);
     }
 
-    @GetMapping
-    public User findById(Long id){
-        User user =  userRepository.findById(id).orElseThrow(()-> new IllegalStateException(
-                "student with id " + id + " doesn't exists"
-        ));
-        return user;
-    }
+    private List<User> _getUsers(int limit, int offset) {
+        final Page<User> eventsPage = userRepo.findAll(
+                PageRequest.of(offset, limit, Sort.by(Sort.Order.asc("id"))));
 
-    public void deleteUser(User user){
-        userRepository.delete(user);
-    }
-
-    @GetMapping
-    public List<User> getUsers(){
-        return userRepository.findAll();
+        return eventsPage.toList();
     }
 
 }
